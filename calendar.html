@@ -1,0 +1,1494 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Event Calendar</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <link href='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.css' rel='stylesheet' />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+  <script src='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js'></script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <style>
+    body[data-bd-theme="dark"] .accordion-item,
+    body[data-bd-theme="dark"] .accordion-button {
+      background-color: #23272b !important;
+      color: #f8f9fa !important;
+      border-color: #444 !important;
+    }
+    body[data-bd-theme="dark"] .accordion-button:not(.collapsed) {
+      background-color: #181a1b !important;
+      color: #f8f9fa !important;
+    }
+    /* Custom button colors (always light) */
+    .btn-breaker-bay {
+      background-color: #66aa95;
+      color: #fff;
+      border: none;
+    }
+    .btn-breaker-bay:hover, .btn-breaker-bay:focus {
+      background-color: #54917d;
+      color: #fff;
+    }
+    .btn-azure {
+      background-color: #36519d;
+      color: #fff;
+      border: none;
+    }
+    .btn-azure:hover, .btn-azure:focus {
+      background-color: #2a3e7a;
+      color: #fff;
+    }
+    .btn-outline-black {
+      background: #fff;
+      color: #000;
+      border: 2px solid #000;
+    }
+    .btn-outline-black:hover, .btn-outline-black:focus {
+      background: #000;
+      color: #fff;
+    }
+
+    body {
+      background-color: #f8f9fa;
+      font-family: Arial, sans-serif;
+      color: #212529;
+    }
+    .container-fluid {
+      height: 100vh;
+    }
+    aside {
+      min-width: 320px;
+      max-width: 400px;
+      width: 30%;
+      overflow-y: auto;
+      background: inherit;
+    }
+    main {
+      flex-grow: 1;
+      padding: 24px;
+      overflow: auto;
+      background-color: inherit;
+    }
+    .list-group-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0.75rem 1rem;
+      background: inherit;
+      color: inherit;
+    }
+    .list-actions {
+      display: flex;
+      gap: 0.5rem;
+    }
+    .team-badge {
+      padding: 0.2rem 0.5rem;
+      border-radius: 3px;
+      font-size: 0.8em;
+      margin-left: 0.5rem;
+    }
+    .form-control-color {
+      width: 50px;
+      height: 38px;
+      padding: 0.375rem;
+    }
+    #calendar {
+      margin-top: 20px;
+      background: inherit;
+    }
+    /* Calendar date numbers color: Horizon */
+    .fc-daygrid-day-number {
+      color: #548b9a !important;
+    }
+    /* Dark mode for everything except event and button colors */
+    body[data-bd-theme="dark"] {
+      background-color: #1a1a1a !important;
+      color: #f8f9fa !important;
+    }
+    body[data-bd-theme="dark"] aside,
+    body[data-bd-theme="dark"] main,
+    body[data-bd-theme="dark"] .modal-content,
+    body[data-bd-theme="dark"] .list-group-item {
+      background-color: #23272b !important;
+      color: #f8f9fa !important;
+    }
+    body[data-bd-theme="dark"] input,
+    body[data-bd-theme="dark"] select,
+    body[data-bd-theme="dark"] textarea {
+      background-color: #181a1b !important;
+      color: #f8f9fa !important;
+      border-color: #444 !important;
+    }
+    body[data-bd-theme="dark"] .dropdown-menu {
+      background-color: #23272b !important;
+      color: #f8f9fa !important;
+    }
+    body[data-bd-theme="dark"] .form-control-color {
+      background: #181a1b !important;
+    }
+    /* Do not override event colors or custom button colors in dark mode */
+    body[data-bd-theme="dark"] .fc-event,
+    body[data-bd-theme="dark"] .fc-event .fc-event-main {
+      background-color: inherit !important;
+      color: inherit !important;
+    }
+    body[data-bd-theme="dark"] .btn-breaker-bay,
+    body[data-bd-theme="dark"] .btn-azure,
+    body[data-bd-theme="dark"] .btn-outline-black {
+      filter: none !important;
+      background: unset !important;
+      color: unset !important;
+    }
+  </style>
+</head>
+<body data-bd-theme="light">
+  <div class="container-fluid vh-100 d-flex flex-row p-0">
+    <div style="position:fixed; bottom:24px; left:180px; z-index:1050; display:flex; gap:12px; align-items:center;">
+      <button id="themeToggle" class="btn btn-outline-secondary" title="Toggle theme">
+        <i id="themeIcon" class="bi bi-brightness-high-fill"></i>
+      </button>
+    </div>
+    
+    <aside class="bg-white border-end p-3 flex-shrink-0" style="min-width:320px;max-width:400px;width:30vw;">
+      <div class="d-flex justify-content-between mb-4 align-items-center">
+        <div class="d-flex align-items-center gap-2">
+          <button class="btn btn-breaker-bay" onclick="openLeaveModal()">New</button>
+         <div class="form-check ms-2">
+  <input class="form-check-input" type="checkbox" id="toggleLeaveEvents" checked>
+  <label class="form-check-label" for="toggleLeaveEvents" title="Show Leave">
+    <i class="bi bi-calendar-event"></i>
+  </label>
+</div>
+<div class="form-check ms-2">
+  <input class="form-check-input" type="checkbox" id="toggleOnCallEvents" checked>
+  <label class="form-check-label" for="toggleOnCallEvents" title="Show On Call">
+    <i class="bi bi-telephone"></i>
+  </label>
+</div>
+        </div>
+        <div class="d-flex align-items-center gap-2">
+          <div class="dropdown">
+            <button class="btn btn-outline-secondary dropdown-toggle" type="button" id="teamFilterDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+              Select Teams
+            </button>
+            <ul class="dropdown-menu p-2" aria-labelledby="teamFilterDropdown" style="min-width: 250px;">
+              <li>
+                <div class="form-check">
+                  <input class="form-check-input" type="checkbox" id="selectAllTeams" checked>
+                  <label class="form-check-label fw-bold" for="selectAllTeams">Select All</label>
+                </div>
+              </li>
+              <div id="teamFilterList"></div>
+            </ul>
+          </div>
+        
+        </div>
+      </div>
+      
+      <div class="accordion" id="sidebarAccordion">
+        <div class="accordion-item">
+          <h2 class="accordion-header" id="onCallHeader">
+            <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#onCallCollapse" aria-expanded="true" aria-controls="onCallCollapse">
+              On Call
+            </button>
+          </h2>
+          <div id="onCallCollapse" class="accordion-collapse collapse show" aria-labelledby="onCallHeader" data-bs-parent="#sidebarAccordion">
+            <div class="accordion-body">
+              <form id="onCallForm" onsubmit="addOnCall(event)">
+                <div class="input-group mb-3"> 
+                  <select class="form-select" id="onCallEmployee" required></select>
+                  <input type="date" class="form-control" id="onCallStart" required style="max-width: 150px;" />
+                  <input type="date" class="form-control" id="onCallEnd" required style="max-width: 150px;" />
+                  <button class="btn btn-breaker-bay" type="submit">Set On Call</button>
+                </div>
+              </form>
+              <ul id="onCallList" class="list-group"></ul>
+            </div>
+          </div>
+        </div>
+        <div class="accordion-item">
+          <h2 class="accordion-header" id="teamsHeader">
+            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#teamsCollapse" aria-expanded="false" aria-controls="teamsCollapse">
+              Teams
+            </button>
+          </h2>
+          <div id="teamsCollapse" class="accordion-collapse collapse" aria-labelledby="teamsHeader" data-bs-parent="#sidebarAccordion">
+            <div class="accordion-body">
+              <form id="teamForm" onsubmit="addTeam(event)">
+                <div class="input-group mb-3">
+                  <input type="text" class="form-control" id="teamName" placeholder="Team Name" required />
+                  <input type="color" class="form-control form-control-color" id="teamColor" value="#66aa95" title="Choose team color" />
+                  <button class="btn btn-breaker-bay" type="submit">Add Team</button>
+                </div>
+              </form>
+              <ul id="teamList" class="list-group"></ul>
+            </div>
+          </div>
+        </div>
+        <div class="accordion-item">
+          <h2 class="accordion-header" id="employeesHeader">
+            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#employeesCollapse" aria-expanded="false" aria-controls="employeesCollapse">
+              Employees
+            </button>
+          </h2>
+          <div id="employeesCollapse" class="accordion-collapse collapse" aria-labelledby="employeesHeader" data-bs-parent="#sidebarAccordion">
+            <div class="accordion-body">
+              <form id="employeeForm" onsubmit="addEmployee(event)">
+                <div class="input-group mb-3">
+                  <input type="text" class="form-control" id="employeeName" placeholder="Employee Name" required />
+                  <select class="form-select" id="employeeTeam" required></select>
+                  <button class="btn btn-breaker-bay" type="submit">Add Employee</button>
+                </div>
+              </form>
+              <ul id="employeeList" class="list-group"></ul>
+            </div>
+          </div>
+        </div>
+        <div class="accordion-item">
+          <h2 class="accordion-header" id="leaveTypesHeader">
+            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#leaveTypesCollapse" aria-expanded="false" aria-controls="leaveTypesCollapse">
+              Leave Types
+            </button>
+          </h2>
+          <div id="leaveTypesCollapse" class="accordion-collapse collapse" aria-labelledby="leaveTypesHeader" data-bs-parent="#sidebarAccordion">
+            <div class="accordion-body">
+              <form id="leaveTypeForm" onsubmit="addLeaveType(event)">
+                <div class="input-group mb-3">
+                  <input type="text" class="form-control" id="leaveTypeName" placeholder="Leave Type" required />
+                  <button class="btn btn-breaker-bay" type="submit">Add Type</button>
+                </div>
+              </form>
+              <ul id="leaveTypeList" class="list-group"></ul>
+            </div>
+          </div>
+        </div>
+      </div>
+    </aside>
+    
+    <main class="flex-grow-1 bg-light p-1"> 
+      <div id="calendar" class="h-100 p-0 m-0" style="min-width:0;"></div>
+    </main>
+    
+  <button id="exportPdfBtn" class="btn btn-breaker-bay position-fixed" style="bottom: 24px; left: 24px; z-index: 1050;">Export PDF</button>
+  </div>
+
+  <!-- Edit Team Modal (Bootstrap) -->
+  <div class="modal fade" id="editTeamModal" tabindex="-1" aria-labelledby="editTeamModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="editTeamModalLabel">Edit Team</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label for="editTeamName" class="form-label">Name:</label>
+            <input type="text" class="form-control" id="editTeamName">
+          </div>
+          <div class="mb-3">
+            <label for="editTeamColor" class="form-label">Color:</label>
+            <input type="color" class="form-control form-control-color" id="editTeamColor">
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-azure" onclick="saveEditTeam()">Save</button>
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Edit Employee Modal (Bootstrap) -->
+  <div class="modal fade" id="editEmpModal" tabindex="-1" aria-labelledby="editEmpModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="editEmpModalLabel">Edit Employee</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label for="editEmpFname" class="form-label">First Name:</label>
+            <input type="text" class="form-control" id="editEmpFname">
+          </div>
+          <div class="mb-3">
+            <label for="editEmpLname" class="form-label">Last Name:</label>
+            <input type="text" class="form-control" id="editEmpLname">
+          </div>
+          <div class="mb-3">
+            <label for="editEmpTeam" class="form-label">Team:</label>
+            <select class="form-select" id="editEmpTeam"></select>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-azure" onclick="saveEditEmp()">Save</button>
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Edit Leave Type Modal (Bootstrap) -->
+  <div class="modal fade" id="editLeaveTypeModal" tabindex="-1" aria-labelledby="editLeaveTypeModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="editLeaveTypeModalLabel">Edit Leave Type</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label for="editLeaveTypeName" class="form-label">Name:</label>
+            <input type="text" class="form-control" id="editLeaveTypeName">
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-azure" onclick="saveEditLeaveType()">Save</button>
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Leave Request Modal -->
+  <div class="modal fade" id="leaveModal" tabindex="-1" aria-labelledby="leaveModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="leaveModalTitle">New Request</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label for="empSearch" class="form-label">Search Employee:</label>
+            <input type="text" class="form-control" id="empSearch" oninput="filterEmpList()">
+          </div>
+          <div id="empList" class="list-group mb-3" style="max-height: 120px; overflow-y: auto;"></div>
+          <div id="leaveStep2" style="display: none;">
+            <div id="coveringEmployeesDiv" class="mb-3">
+              <label class="form-label fw-bold">Covering Employees</label>
+              <div class="dropdown">
+                <button class="btn btn-outline-secondary dropdown-toggle" type="button" id="coverDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                  Select Covering Employees
+                </button>
+                <ul class="dropdown-menu p-2" aria-labelledby="coverDropdown" style="min-width: 250px; max-height: 300px; overflow-y: auto;">
+                  <li>
+                    <input class="form-control mb-2" id="coverSearch" placeholder="Search employees...">
+                  </li>
+                  <div id="coveringEmployeesList"></div>
+                </ul>
+              </div>
+            </div>
+            <div class="row">
+              <div class="col-md-6 mb-3">
+                <label for="leaveStart" class="form-label">Start Date:</label>
+                <input type="date" class="form-control" id="leaveStart">
+              </div>
+              <div class="col-md-6 mb-3">
+                <label for="leaveEnd" class="form-label">End Date:</label>
+                <input type="date" class="form-control" id="leaveEnd">
+              </div>
+            </div>
+            <div class="mb-3">
+              <label for="leaveTypeSelect" class="form-label">Leave Type:</label>
+              <select class="form-select" id="leaveTypeSelect"></select>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-black" id="leaveModalDeleteBtn" style="display: none;" onclick="deleteLeaveEvent()">Delete</button>
+          <button type="button" class="btn btn-breaker-bay" id="leaveModalSubmitBtn" onclick="submitLeaveRequest()">Submit</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Global variables
+    let _modalEmployees = [];
+    let _modalLeaveTypes = [];
+    let _selectedEmp = null;
+    let _editEventIdx = null;
+    let _editEventObj = null;
+    let _editEmpIdx = null;
+    let _editTeamId = null;
+    let _editLeaveTypeIdx = null;
+    
+    // DOM elements
+    const sidebar = document.querySelector('aside');
+    
+    // Theme toggle logic
+    const themeToggle = document.getElementById('themeToggle');
+    const themeIcon = document.getElementById('themeIcon');
+    const body = document.body;
+
+    async function saveThemeSetting(isDark) {
+      await fetch('/api/user-settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ darkMode: isDark })
+      });
+    }
+
+    async function setTheme(mode, persist) {
+      body.setAttribute('data-bd-theme', mode);
+      if (themeIcon) {
+        if (mode === 'dark') {
+          themeIcon.className = 'bi bi-moon-stars-fill';
+          themeIcon.style.color = '#a259e6';
+        } else {
+          themeIcon.className = 'bi bi-brightness-high-fill';
+          themeIcon.style.color = '#ffd600';
+        }
+      }
+      if (persist) {
+        await saveThemeSetting(mode === 'dark');
+      }
+    }
+    
+    // Load user setting
+    async function loadUserSettings() {
+      try {
+        const res = await fetch('/api/user-settings');
+        const data = await res.json();
+        if (data.sidebarWidth) {
+          sidebar.style.width = `${data.sidebarWidth}px`;
+          sidebar.dataset.originalWidth = data.sidebarWidth;
+        }
+        if (data.darkMode !== undefined) {
+          await setTheme(data.darkMode ? 'dark' : 'light', false);
+        }
+      } catch (e) {
+        setTheme('light', true);
+      }
+    }
+    
+    async function saveSidebarWidth(width) {
+      try {
+        await fetch('/api/user-settings', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ sidebarWidth: Math.round(width) })
+        });
+      } catch (e) {
+        console.error('Error saving user settings:', e);
+      }
+    }
+    
+    // Initialize the application
+    document.addEventListener('DOMContentLoaded', function() {
+      // Load user settings
+      loadUserSettings();
+      
+      // Set up resize observer to detect width changes
+      const resizeObserver = new ResizeObserver(entries => {
+        for (let entry of entries) {
+          const width = entry.contentRect.width;
+          // Only save if width changed significantly (avoid rapid firing)
+          if (Math.abs(sidebar.dataset.originalWidth - width) > 5) {
+            saveSidebarWidth(width);
+            sidebar.dataset.originalWidth = width;
+          }
+        }
+      });
+      
+      // Start observing
+      if (sidebar) {
+        sidebar.dataset.originalWidth = sidebar.clientWidth;
+        resizeObserver.observe(sidebar);
+      }
+      
+      // Initialize components
+      loadOnCall();
+      loadTeams();
+      loadEmployees();
+      loadLeaveTypes();
+      
+      // Theme toggle
+      if (themeToggle) {
+        themeToggle.onclick = async function() {
+          const isDark = body.getAttribute('data-bd-theme') === 'dark';
+          await setTheme(isDark ? 'light' : 'dark', true);
+        };
+      }
+      
+      // Team filter logic
+      let _selectedTeams = [];
+      
+      function renderTeamFilter(teams) {
+        const container = document.getElementById('teamFilterList');
+        if (!container) return;
+        
+        container.innerHTML = '';
+        teams.forEach(team => {
+          const id = 'teamFilter_' + team.id;
+          const div = document.createElement('div');
+          div.className = 'form-check';
+          div.innerHTML = `
+            <input class="form-check-input team-filter-checkbox" type="checkbox" value="${team.id}" id="${id}" checked>
+            <label class="form-check-label" for="${id}">${team.name}</label>
+          `;
+          container.appendChild(div);
+        });
+        
+        // Select all logic
+        const selectAll = document.getElementById('selectAllTeams');
+        if (selectAll) {
+          selectAll.checked = true;
+          selectAll.onchange = function() {
+            const checked = this.checked;
+            document.querySelectorAll('.team-filter-checkbox').forEach(cb => {
+              cb.checked = checked;
+            });
+            updateTeamFilter();
+          };
+        }
+        
+        document.querySelectorAll('.team-filter-checkbox').forEach(cb => {
+          cb.onchange = function() {
+            const all = document.querySelectorAll('.team-filter-checkbox');
+            const checkedCount = Array.from(all).filter(x => x.checked).length;
+            if (selectAll) {
+              selectAll.checked = checkedCount === all.length;
+            }
+            updateTeamFilter();
+          };
+        });
+        
+        updateTeamFilter();
+      }
+      
+      function updateTeamFilter() {
+        _selectedTeams = Array.from(document.querySelectorAll('.team-filter-checkbox:checked')).map(cb => cb.value);
+        if (window._calendar) window._calendar.refetchEvents();
+      }
+      
+      // Initialize calendar
+      const calendarEl = document.getElementById('calendar');
+      if (calendarEl) {
+        const calendar = new FullCalendar.Calendar(calendarEl, {
+          initialView: 'dayGridMonth',
+          events: async function(fetchInfo, successCallback, failureCallback) {
+            let events = [];
+            let showLeave = document.getElementById('toggleLeaveEvents')?.checked;
+            let showOnCall = document.getElementById('toggleOnCallEvents')?.checked;
+            
+            if (showLeave) {
+              try {
+                const res = await fetch('/api/events');
+                let leaveEvents = await res.json();
+                
+                // Filter by selected teams
+                if (_selectedTeams && _selectedTeams.length > 0 && window._teams) {
+                  leaveEvents = leaveEvents.filter(ev => {
+                    // Try to find employee's team
+                    const empName = ev.title.split(' - ')[0];
+                    const emp = (window._employees || []).find(e => {
+                      const fullName = (e.fname || '') + ' ' + (e.lname || '');
+                      return (e.name || fullName.trim()) === empName;
+                    });
+                    return emp && emp.teamId && _selectedTeams.includes(emp.teamId);
+                  });
+                }
+                // Assign team color to each leave event
+                leaveEvents = leaveEvents.map(ev => {
+                  const empName = ev.title.split(' - ')[0];
+                  const emp = (window._employees || []).find(e => {
+                    const fullName = (e.fname || '') + ' ' + (e.lname || '');
+                    return (e.name || fullName.trim()) === empName;
+                  });
+                  let color = '';
+                  if (emp && emp.teamId && window._teams) {
+                    const team = window._teams.find(t => t.id === emp.teamId);
+                    if (team && team.color) color = team.color;
+                  }
+                  return { ...ev, backgroundColor: color, borderColor: color };
+                });
+                events = events.concat(leaveEvents);
+              } catch (e) { 
+                console.error('Error fetching events:', e);
+                failureCallback(e); 
+                return; 
+              }
+            }
+            
+            if (showOnCall && window._onCall) {
+              // Add on-call as background events
+              window._onCall.forEach(o => {
+                events.push({
+                  title: 'On Call: ' + o.name,
+                  start: o.start,
+                  end: o.end,
+                  display: 'background',
+                  backgroundColor: '#ffe4b5',
+                  borderColor: '#d2691e',
+                  textColor: '#d2691e',
+                  extendedProps: { onCall: true }
+                });
+              });
+            }
+            
+            successCallback(events);
+          },
+          eventDidMount: function(info) {
+            if (info.event.extendedProps && info.event.extendedProps.cancelled) {
+              info.el.style.backgroundColor = '#bbb';
+              info.el.style.textDecoration = 'line-through';
+              info.el.title = 'Cancelled';
+            }
+          },
+          eventClick: function(info) {
+            // Find event index in events.json by matching all fields
+            fetch('/api/events')
+              .then(r => r.json())
+              .then(events => {
+                const idx = events.findIndex(ev =>
+                  ev.title === info.event.title &&
+                  ev.start === info.event.startStr &&
+                  (ev.end || ev.start) === (info.event.endStr || info.event.startStr)
+                );
+                openLeaveModal(idx, info.event);
+              });
+          },
+          dayCellDidMount: function(arg) {
+            // Add BHB logo only on the current date
+            const cell = arg.el;
+            const today = new Date();
+            const cellDate = new Date(arg.date);
+            // Reset time to compare only dates
+            today.setHours(0, 0, 0, 0);
+            cellDate.setHours(0, 0, 0, 0);
+            if (cellDate.getTime() === today.getTime()) {
+              const logoUrl = 'bhblogo.png';
+              const dateNum = cell.querySelector('.fc-daygrid-day-number');
+              if (dateNum) {
+                const logo = document.createElement('img');
+                logo.src = logoUrl;
+                logo.alt = 'BHB Logo';
+                logo.style.width = '22px';
+                logo.style.height = '22px';
+                logo.style.position = 'absolute';
+                logo.style.left = '4px';
+                logo.style.top = '4px';
+                logo.style.zIndex = '2';
+                cell.style.position = 'relative';
+                cell.prepend(logo);
+                dateNum.style.marginLeft = '26px';
+              }
+            }
+            // Render on-call at top of cell
+            if (window._onCall) {
+              const dateStr = arg.date.toISOString().substring(0, 10);
+              const onCall = window._onCall.find(o => dateStr >= o.start && dateStr <= o.end);
+              if (onCall) {
+                const dateNum = cell.querySelector('.fc-daygrid-day-number');
+                const onCallDiv = document.createElement('div');
+                onCallDiv.textContent = 'On Call: ' + onCall.name;
+                onCallDiv.style.fontWeight = 'bold';
+                onCallDiv.style.color = '#d2691e';
+                onCallDiv.style.fontSize = '0.95em';
+                onCallDiv.style.marginBottom = '2px';
+                onCallDiv.style.position = 'absolute';
+                onCallDiv.style.left = '4px';
+                onCallDiv.style.top = dateNum ? (dateNum.offsetTop + dateNum.offsetHeight + 2) + 'px' : '26px';
+                onCallDiv.style.zIndex = '2';
+                cell.appendChild(onCallDiv);
+              }
+            }
+          }
+        });
+        
+        window._calendar = calendar;
+        
+        // Add event listeners for toggles
+        const toggleLeaveEvents = document.getElementById('toggleLeaveEvents');
+        const toggleOnCallEvents = document.getElementById('toggleOnCallEvents');
+        
+        if (toggleLeaveEvents) {
+          toggleLeaveEvents.addEventListener('change', function() {
+            if (window._calendar) window._calendar.refetchEvents();
+          });
+        }
+        
+        if (toggleOnCallEvents) {
+          toggleOnCallEvents.addEventListener('change', function() {
+            if (window._calendar) window._calendar.refetchEvents();
+          });
+        }
+        
+        calendar.render();
+        
+        // Load teams and employees for filter
+        fetch('/api/teams').then(r => r.json()).then(teams => {
+          window._teams = teams;
+          renderTeamFilter(teams);
+        });
+        
+        fetch('/api/employees').then(r => r.json()).then(emps => {
+          window._employees = emps;
+          
+          // Update team colors in employee list
+          const sel = document.getElementById('employeeTeam');
+          if (sel) {
+            for (let i = 0; i < sel.options.length; i++) {
+              const opt = sel.options[i];
+              if (opt.value && opt.dataset.color) {
+                opt.style.color = opt.dataset.color;
+              }
+            }
+          }
+        });
+      }
+      
+      // PDF Export functionality
+      const exportPdfBtn = document.getElementById('exportPdfBtn');
+      if (exportPdfBtn) {
+        exportPdfBtn.onclick = async function() {
+          try {
+            // Capture the calendar area
+            const calendarEl = document.getElementById('calendar');
+            const canvas = await html2canvas(calendarEl, {
+              scale: 2,
+              useCORS: true,
+              allowTaint: true
+            });
+            
+            // Create PDF
+            const imgData = canvas.toDataURL('image/png');
+            const pdf = new jspdf.jsPDF('p', 'mm', 'a4');
+            const pdfWidth = pdf.internal.pageSize.getWidth();
+            const pdfHeight = pdf.internal.pageSize.getHeight();
+            const imgWidth = canvas.width;
+            const imgHeight = canvas.height;
+            
+            // Calculate dimensions to fit A4
+            const ratio = Math.min(pdfWidth / imgWidth, pdfHeight / imgHeight);
+            const imgX = (pdfWidth - imgWidth * ratio) / 2;
+            const imgY = 10;
+            const imgW = imgWidth * ratio;
+            const imgH = imgHeight * ratio;
+            
+            // Add image to PDF
+            pdf.addImage(imgData, 'PNG', imgX, imgY, imgW, imgH);
+            pdf.save('calendar-export.pdf');
+          } catch (error) {
+            console.error('Error generating PDF:', error);
+            // ...existing code...
+          }
+        };
+      }
+    });
+    
+    // On Call functions
+    async function loadOnCall() {
+      try {
+        // Populate employee dropdown for on call
+        const empRes = await fetch('/api/employees');
+        const employees = await empRes.json();
+        const sel = document.getElementById('onCallEmployee');
+        if (sel) {
+          sel.innerHTML = '<option value="">Select Employee</option>' + employees.map(e => {
+            const displayName = e.name ? e.name : ((e.fname || '') + (e.lname ? ' ' + e.lname : '')).trim();
+            return `<option value="${displayName}">${displayName}</option>`;
+          }).join('');
+        }
+        
+        // List on call assignments
+        const res = await fetch('/api/on-call');
+        const onCall = await res.json();
+        const ul = document.getElementById('onCallList');
+        if (ul) {
+          ul.innerHTML = onCall.map((o, i) => `
+            <li class="list-group-item">
+              <span>${o.name} (${o.start} to ${o.end})</span>
+              <button onclick="deleteOnCall(${i})" class="btn btn-outline-black btn-sm">Delete</button>
+            </li>
+          `).join('');
+        }
+        window._onCall = onCall;
+      } catch (error) {
+        console.error('Error loading on-call ', error);
+      }
+    }
+    
+    async function addOnCall(event) {
+      event.preventDefault(); // Prevent form submission
+      
+      const sel = document.getElementById('onCallEmployee');
+      const name = sel ? sel.value : '';
+      const start = document.getElementById('onCallStart').value;
+      const end = document.getElementById('onCallEnd').value;
+      
+  if (!name || !start || !end) return;
+      
+      try {
+        const res = await fetch('/api/on-call', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name, start, end })
+        });
+        
+        if (res.ok) {
+          sel.value = '';
+          document.getElementById('onCallStart').value = '';
+          document.getElementById('onCallEnd').value = '';
+          loadOnCall();
+          if (window._calendar) window._calendar.refetchEvents();
+        } else {
+          // ...existing code...
+        }
+      } catch (error) {
+        console.error('Error adding on-call:', error);
+  // ...existing code...
+      }
+    }
+    
+    async function deleteOnCall(idx) {
+      if (!confirm('Delete this on call assignment?')) return;
+      try {
+        await fetch(`/api/on-call/${idx}`, { method: 'DELETE' });
+        loadOnCall();
+        if (window._calendar) window._calendar.refetchEvents();
+      } catch (error) {
+        console.error('Error deleting on-call:', error);
+      }
+    }
+    
+    // Teams functions
+    async function addTeam(event) {
+      event.preventDefault(); // Prevent form submission
+      
+      const name = document.getElementById('teamName').value;
+      const color = document.getElementById('teamColor').value;
+  if (!name || !color) return;
+      
+      try {
+        const res = await fetch('/api/teams', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name, color })
+        });
+        
+        const data = await res.json();
+        if (data.name) {
+          document.getElementById('teamName').value = '';
+          document.getElementById('teamColor').value = '#66aa95';
+          loadTeams();
+        } else {
+          // ...existing code...
+        }
+      } catch (error) {
+        console.error('Error adding team:', error);
+  // ...existing code...
+      }
+    }
+    
+    async function loadTeams() {
+      try {
+        const res = await fetch('/api/teams');
+        const teams = await res.json();
+        
+        // Fill team select for employee upload
+        const sel = document.getElementById('employeeTeam');
+        sel.innerHTML = '<option value="">No Team</option>' + 
+          teams.map(t => `<option value="${t.id}" data-color="${t.color}">${t.name}</option>`).join('');
+        
+        // Add color to options
+        setTimeout(() => {
+          for (let i = 0; i < sel.options.length; i++) {
+            const opt = sel.options[i];
+            if (opt.value && opt.dataset.color) {
+              opt.style.color = opt.dataset.color;
+            }
+          }
+        }, 0);
+        
+        // Show team list with edit/delete buttons
+        const teamList = document.getElementById('teamList');
+        if (teamList) {
+          teamList.innerHTML = teams.map(t => `
+            <li class="list-group-item">
+              <span style="color:${t.color}; font-weight:bold;">${t.name}</span>
+              <div class="list-actions">
+                <button onclick="openEditTeamModal('${t.id}')" class="btn btn-azure btn-sm">Edit</button>
+                <button onclick="deleteTeam('${t.id}')" class="btn btn-outline-black btn-sm">Delete</button>
+              </div>
+            </li>
+          `).join('');
+        }
+        
+        // Store teams for later use
+        window._teams = teams;
+        loadEmployees();
+      } catch (error) {
+        console.error('Error loading teams:', error);
+      }
+    }
+    
+    async function deleteTeam(id) {
+      if (!confirm('Delete this team?')) return;
+      try {
+        await fetch(`/api/teams/${id}`, { method: 'DELETE' });
+        loadTeams();
+      } catch (error) {
+        console.error('Error deleting team:', error);
+      }
+    }
+    
+    // Employees functions
+    async function addEmployee(event) {
+      event.preventDefault(); // Prevent form submission
+      
+      const name = document.getElementById('employeeName').value;
+      const teamId = document.getElementById('employeeTeam').value || null;
+      
+  if (!name) return;
+      
+      // Parse first and last name
+      const nameParts = name.trim().split(' ');
+      const fname = nameParts[0];
+      const lname = nameParts.length > 1 ? nameParts.slice(1).join(' ') : '';
+      
+      try {
+        const res = await fetch('/api/employees', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ fname, lname, teamId })
+        });
+        
+        const data = await res.json();
+        if (data.success) {
+          document.getElementById('employeeName').value = '';
+          loadEmployees();
+        } else {
+          // ...existing code...
+        }
+      } catch (error) {
+        console.error('Error adding employee:', error);
+  // ...existing code...
+      }
+    }
+    
+    async function loadEmployees() {
+      try {
+        const res = await fetch('/api/employees');
+        const employees = await res.json();
+        const teams = window._teams || [];
+        
+        const ul = document.getElementById('employeeList');
+        if (ul) {
+          ul.innerHTML = employees.map((e, i) => {
+            const team = teams.find(t => t.id === e.teamId);
+            const displayName = e.name ? e.name : ((e.fname || '') + (e.lname ? ' ' + e.lname : '')).trim();
+            
+            return `
+              <li class="list-group-item">
+                <div>
+                  <span>${displayName}</span>
+                  ${team ? `<span class="team-badge" style="background-color:${team.color}">${team.name}</span>` : '<span class="team-badge">No Team</span>'}
+                </div>
+                <div class="list-actions">
+                  <button onclick="openEditEmpModal(${i})" class="btn btn-azure btn-sm">Edit</button>
+                  <button onclick="deleteEmployee(${i})" class="btn btn-outline-black btn-sm">Delete</button>
+                </div>
+              </li>
+            `;
+          }).join('');
+        }
+      } catch (error) {
+        console.error('Error loading employees:', error);
+      }
+    }
+    
+    async function deleteEmployee(idx) {
+      if (!confirm('Delete this employee?')) return;
+      try {
+        await fetch(`/api/employees/${idx}`, { method: 'DELETE' });
+        loadEmployees();
+      } catch (error) {
+        console.error('Error deleting employee:', error);
+      }
+    }
+    
+    // Leave Types functions
+    async function addLeaveType(event) {
+      event.preventDefault(); // Prevent form submission
+      
+      const name = document.getElementById('leaveTypeName').value;
+  if (!name) return;
+      
+      try {
+        const res = await fetch('/api/leave-types', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name })
+        });
+        
+        const data = await res.json();
+        if (data.name) {
+          document.getElementById('leaveTypeName').value = '';
+          loadLeaveTypes();
+        } else {
+          // ...existing code...
+        }
+      } catch (error) {
+        console.error('Error adding leave type:', error);
+  // ...existing code...
+      }
+    }
+    
+    async function loadLeaveTypes() {
+      try {
+        const res = await fetch('/api/leave-types');
+        const types = await res.json();
+        
+        const leaveTypeList = document.getElementById('leaveTypeList');
+        if (leaveTypeList) {
+          leaveTypeList.innerHTML = types.map((t, i) => `
+            <li class="list-group-item">
+              <span>${t.name}</span>
+              <div class="list-actions">
+                <button onclick="openEditLeaveTypeModal(${i})" class="btn btn-azure btn-sm">Edit</button>
+                <button onclick="deleteLeaveType(${i})" class="btn btn-outline-black btn-sm">Delete</button>
+              </div>
+            </li>
+          `).join('');
+        }
+      } catch (error) {
+        console.error('Error loading leave types:', error);
+      }
+    }
+    
+    async function deleteLeaveType(idx) {
+      if (!confirm('Delete this leave type?')) return;
+      try {
+        await fetch(`/api/leave-types/${idx}`, { method: 'DELETE' });
+        loadLeaveTypes();
+      } catch (error) {
+        console.error('Error deleting leave type:', error);
+      }
+    }
+    
+    // Modal functions
+    async function openLeaveModal(editIdx = null, eventObj = null) {
+      // Reset form
+      document.getElementById('empSearch').value = '';
+      document.getElementById('empList').innerHTML = '';
+      document.getElementById('leaveStep2').style.display = 'none';
+      
+      _selectedEmp = null;
+      _editEventIdx = editIdx;
+      _editEventObj = eventObj;
+      
+      // Update modal title and buttons
+      const modalTitle = document.getElementById('leaveModalTitle');
+      const submitBtn = document.getElementById('leaveModalSubmitBtn');
+      const deleteBtn = document.getElementById('leaveModalDeleteBtn');
+  modalTitle.textContent = editIdx !== null ? 'Edit Request' : 'New Request';
+  submitBtn.textContent = editIdx !== null ? 'Save' : 'Submit';
+  deleteBtn.style.display = editIdx !== null ? 'inline-block' : 'none';
+      
+      // Show Bootstrap modal
+      const modal = new bootstrap.Modal(document.getElementById('leaveModal'));
+      modal.show();
+      
+      // Load employees
+      try {
+        const empRes = await fetch('/api/employees');
+        _modalEmployees = await empRes.json();
+        
+        // Load leave types
+        const leaveRes = await fetch('/api/leave-types');
+        _modalLeaveTypes = await leaveRes.json();
+        
+        const sel = document.getElementById('leaveTypeSelect');
+        sel.innerHTML = _modalLeaveTypes.map(l => `<option value="${l.name}">${l.name}</option>`).join('');
+        
+        if (editIdx !== null && eventObj) {
+          // Parse employee name from event title
+          const [empName, leaveType] = eventObj.title.split(' - ');
+          document.getElementById('empSearch').value = empName;
+          
+          // Format dates
+          const startDate = eventObj.startStr ? eventObj.startStr.substring(0,10) : 
+                           eventObj.start ? eventObj.start.substring(0,10) : '';
+          const endDate = eventObj.endStr ? eventObj.endStr.substring(0,10) : 
+                          eventObj.end ? eventObj.end.substring(0,10) : startDate;
+          
+          document.getElementById('leaveStart').value = startDate;
+          document.getElementById('leaveEnd').value = endDate;
+          document.getElementById('leaveTypeSelect').value = leaveType || '';
+          
+          // Try to select employee
+          const idx = _modalEmployees.findIndex(e => {
+            const fullName = ((e.fname || '') + ' ' + (e.lname ? ' ' + e.lname : '')).trim();
+            return fullName === empName;
+          });
+          
+          if (idx !== -1) {
+            selectEmp(idx, true);
+          } else {
+            filterEmpList();
+          }
+        } else {
+          filterEmpList();
+        }
+        
+        // Covering employees logic
+        let _coveringSelected = [];
+        
+        function renderCoveringList() {
+          const listDiv = document.getElementById('coveringEmployeesList');
+          if (!listDiv) return;
+          
+          let baseTeamId = null;
+          if (_selectedEmp && _selectedEmp.teamId) baseTeamId = _selectedEmp.teamId;
+          
+          let emps = _modalEmployees.filter(e => e !== _selectedEmp);
+          const search = (document.getElementById('coverSearch')?.value || '').toLowerCase();
+          
+          if (search) {
+            emps = emps.filter(e => {
+              const displayName = e.name ? e.name : ((e.fname || '') + (e.lname ? ' ' + e.lname : '')).trim();
+              return displayName.toLowerCase().includes(search);
+            });
+          } else if (baseTeamId) {
+            emps = emps.filter(e => e.teamId === baseTeamId);
+          }
+          
+          listDiv.innerHTML = emps.map(e => {
+            const displayName = e.name ? e.name : ((e.fname || '') + (e.lname ? ' ' + e.lname : '')).trim();
+            const checked = _coveringSelected.includes(displayName) ? 'checked' : '';
+            return `<div class="form-check">
+              <input class="form-check-input covering-checkbox" type="checkbox" value="${displayName}" id="coverEmp_${displayName}" ${checked}>
+              <label class="form-check-label" for="coverEmp_${displayName}">${displayName}</label>
+            </div>`;
+          }).join('');
+          
+          document.querySelectorAll('.covering-checkbox').forEach(cb => {
+            cb.onchange = function() {
+              if (this.checked) {
+                if (!_coveringSelected.includes(this.value)) _coveringSelected.push(this.value);
+              } else {
+                _coveringSelected = _coveringSelected.filter(v => v !== this.value);
+              }
+            };
+          });
+        }
+        
+        document.getElementById('coverSearch').oninput = renderCoveringList;
+        renderCoveringList();
+      } catch (error) {
+        console.error('Error loading modal data:', error);
+      }
+    }
+    
+    function filterEmpList() {
+      const q = document.getElementById('empSearch').value.toLowerCase();
+      const ul = document.getElementById('empList');
+      
+      if (!q) {
+        ul.innerHTML = '';
+        return;
+      }
+      
+      const filtered = _modalEmployees
+        .filter(e => {
+          const displayName = e.name ? e.name : ((e.fname || '') + (e.lname ? ' ' + e.lname : '')).trim();
+          return displayName.toLowerCase().includes(q);
+        });
+      
+      ul.innerHTML = filtered.map((e, i) => {
+        const displayName = e.name ? e.name : ((e.fname || '') + (e.lname ? ' ' + e.lname : '')).trim();
+        return `<li class="list-group-item" style="cursor:pointer;">${displayName}</li>`;
+      }).join('');
+      
+      // Add event listeners after rendering
+      const items = ul.querySelectorAll('li');
+      items.forEach((item, index) => {
+        item.onclick = () => selectEmp(_modalEmployees.indexOf(filtered[index]));
+      });
+    }
+    
+    function selectEmp(idx, skipShowStep2) {
+      _selectedEmp = _modalEmployees[idx];
+      document.getElementById('empList').innerHTML = '';
+      
+      const displayName = _selectedEmp.name ? _selectedEmp.name : 
+                         ((_selectedEmp.fname || '') + (_selectedEmp.lname ? ' ' + _selectedEmp.lname : '')).trim();
+      document.getElementById('empSearch').value = displayName;
+      
+      if (!skipShowStep2) {
+        document.getElementById('leaveStep2').style.display = 'block';
+        setTimeout(() => document.getElementById('leaveStart').focus(), 100);
+      } else {
+        document.getElementById('leaveStep2').style.display = 'block';
+      }
+    }
+    
+    async function submitLeaveRequest() {
+      if (!_selectedEmp) {
+        alert('Please select an employee');
+        return;
+      }
+      
+      const empName = _selectedEmp.name ? _selectedEmp.name : 
+                     ((_selectedEmp.fname || '') + (_selectedEmp.lname ? ' ' + _selectedEmp.lname : '')).trim();
+      const leaveType = document.getElementById('leaveTypeSelect').value;
+      const start = document.getElementById('leaveStart').value;
+      const end = document.getElementById('leaveEnd').value;
+      
+      // Get covering employees
+      const covering = Array.from(document.querySelectorAll('.covering-checkbox:checked')).map(cb => cb.value);
+      
+      if (!empName || !leaveType || !start || !end) {
+        alert('All fields required');
+        return;
+      }
+      
+      // Make end date inclusive for FullCalendar (add 1 day)
+      let inclusiveEnd = end;
+      if (start && end) {
+        const endDate = new Date(end);
+        endDate.setDate(endDate.getDate() + 1);
+        inclusiveEnd = endDate.toISOString().slice(0, 10);
+      }
+      const event = { title: empName + ' - ' + leaveType, start, end: inclusiveEnd, covering };
+      
+      try {
+        let res;
+        if (_editEventIdx !== null) {
+          // PATCH update
+          res = await fetch(`/api/events/${_editEventIdx}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(event)
+          });
+        } else {
+          // POST new
+          res = await fetch('/api/events', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(event)
+          });
+        }
+        
+        if (res.ok) {
+          const modal = bootstrap.Modal.getInstance(document.getElementById('leaveModal'));
+          modal.hide();
+          window._calendar.refetchEvents();
+        } else {
+          alert('Error saving request.');
+        }
+      } catch (error) {
+        console.error('Error submitting leave request:', error);
+        alert('Error saving request.');
+      }
+    }
+    
+    async function deleteLeaveEvent() {
+      // Only delete if a valid event is selected
+      if (_editEventIdx === null || _editEventIdx === -1) {
+        alert('No valid event selected for deletion.');
+        return;
+      }
+      
+      if (!confirm('Delete this request?')) return;
+      
+      try {
+        const res = await fetch(`/api/events/${_editEventIdx}`, { method: 'DELETE' });
+        
+        if (res.ok) {
+          const modal = bootstrap.Modal.getInstance(document.getElementById('leaveModal'));
+          modal.hide();
+          window._calendar.refetchEvents();
+        } else {
+          alert('Error deleting request.');
+        }
+      } catch (error) {
+        console.error('Error deleting leave event:', error);
+        alert('Error deleting request.');
+      }
+    }
+    
+    async function cancelLeaveEvent() {
+      if (_editEventIdx === null) return;
+      if (!confirm('Cancel this request?')) return;
+      
+      try {
+        const res = await fetch(`/api/events/${_editEventIdx}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ cancelled: true })
+        });
+        
+        if (res.ok) {
+          const modal = bootstrap.Modal.getInstance(document.getElementById('leaveModal'));
+          modal.hide();
+          window._calendar.refetchEvents();
+        } else {
+          alert('Error cancelling request.');
+        }
+      } catch (error) {
+        console.error('Error cancelling leave event:', error);
+        alert('Error cancelling request.');
+      }
+    }
+    
+    // Edit Employee Modal
+    function openEditEmpModal(idx) {
+      _editEmpIdx = idx;
+      fetch('/api/employees')
+        .then(r => r.json())
+        .then(emps => {
+          const emp = emps[idx];
+          document.getElementById('editEmpFname').value = emp.fname || '';
+          document.getElementById('editEmpLname').value = emp.lname || '';
+          
+          // Fill team dropdown
+          const sel = document.getElementById('editEmpTeam');
+          const teams = window._teams || [];
+          sel.innerHTML = '<option value="">No Team</option>' + 
+            teams.map(t => `<option value="${t.id}" ${emp.teamId === t.id ? 'selected' : ''}>${t.name}</option>`).join('');
+          
+          // Show Bootstrap modal
+          const modal = new bootstrap.Modal(document.getElementById('editEmpModal'));
+          modal.show();
+        })
+        .catch(error => {
+          console.error('Error loading employee for editing:', error);
+        });
+    }
+    
+    function closeEditEmpModal() {
+      const modalEl = document.getElementById('editEmpModal');
+      const modal = bootstrap.Modal.getInstance(modalEl);
+      if (modal) modal.hide();
+      _editEmpIdx = null;
+    }
+    
+    async function saveEditEmp() {
+      const fname = document.getElementById('editEmpFname').value;
+      const lname = document.getElementById('editEmpLname').value;
+      const teamId = document.getElementById('editEmpTeam').value || null;
+      
+      if (!fname || !lname) {
+        alert('First and last name required');
+        return;
+      }
+      
+      try {
+        await fetch(`/api/employees/${_editEmpIdx}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ fname, lname, teamId })
+        });
+        
+        closeEditEmpModal();
+        loadEmployees();
+      } catch (error) {
+        console.error('Error saving edited employee:', error);
+      }
+    }
+    
+    // Edit Team Modal
+    function openEditTeamModal(id) {
+      _editTeamId = id;
+      fetch('/api/teams')
+        .then(r => r.json())
+        .then(teams => {
+          const team = teams.find(t => t.id === id);
+          if (team) {
+            document.getElementById('editTeamName').value = team.name;
+            document.getElementById('editTeamColor').value = team.color;
+            
+            // Show Bootstrap modal
+            const modal = new bootstrap.Modal(document.getElementById('editTeamModal'));
+            modal.show();
+          }
+        })
+        .catch(error => {
+          console.error('Error loading team for editing:', error);
+        });
+    }
+    
+    function closeEditTeamModal() {
+      const modalEl = document.getElementById('editTeamModal');
+      const modal = bootstrap.Modal.getInstance(modalEl);
+      if (modal) modal.hide();
+      _editTeamId = null;
+    }
+    
+    async function saveEditTeam() {
+      const name = document.getElementById('editTeamName').value;
+      const color = document.getElementById('editTeamColor').value;
+      
+      if (!name || !color) {
+        alert('Name and color required');
+        return;
+      }
+      
+      try {
+        await fetch(`/api/teams/${_editTeamId}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name, color })
+        });
+        
+        closeEditTeamModal();
+        loadTeams();
+      } catch (error) {
+        console.error('Error saving edited team:', error);
+      }
+    }
+    
+    // Edit Leave Type Modal
+    function openEditLeaveTypeModal(idx) {
+      _editLeaveTypeIdx = idx;
+      fetch('/api/leave-types')
+        .then(r => r.json())
+        .then(types => {
+          document.getElementById('editLeaveTypeName').value = types[idx].name;
+          
+          // Show Bootstrap modal
+          const modal = new bootstrap.Modal(document.getElementById('editLeaveTypeModal'));
+          modal.show();
+        })
+        .catch(error => {
+          console.error('Error loading leave type for editing:', error);
+        });
+    }
+    
+    function closeEditLeaveTypeModal() {
+      const modalEl = document.getElementById('editLeaveTypeModal');
+      const modal = bootstrap.Modal.getInstance(modalEl);
+      if (modal) modal.hide();
+      _editLeaveTypeIdx = null;
+    }
+    
+    async function saveEditLeaveType() {
+      const name = document.getElementById('editLeaveTypeName').value;
+      if (!name) {
+        alert('Name required');
+        return;
+      }
+      
+      try {
+        await fetch(`/api/leave-types/${_editLeaveTypeIdx}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name })
+        });
+        
+        closeEditLeaveTypeModal();
+        loadLeaveTypes();
+      } catch (error) {
+        console.error('Error saving edited leave type:', error);
+      }
+    }
+  </script>
+</body>
+</html>
