@@ -81,17 +81,19 @@ app.post('/api/user-settings', (req, res) => {
 });
 
 app.post('/api/employees', (req, res) => {
-  const { fname, lname, name, teamId } = req.body;
+  const { name, teamId } = req.body;
   const employees = readJson(employeesFile);
-  let emp = {};
-  if (name) {
-    emp = { name, teamId };
-  } else {
-    emp = { fname, lname, teamId };
+  if (!name) return res.status(400).json({ success: false, error: 'Name required' });
+  const names = name.split(';').map(n => n.trim()).filter(n => n);
+  if (names.length === 0) return res.status(400).json({ success: false, error: 'No valid names' });
+  const added = [];
+  for (const n of names) {
+    const emp = { name: n, teamId };
+    employees.push(emp);
+    added.push(emp);
   }
-  employees.push(emp);
   writeJson(employeesFile, employees);
-  res.status(201).json(emp);
+  res.status(201).json({ success: true, added });
 });
 
 app.post('/api/employees/csv', (req, res) => {

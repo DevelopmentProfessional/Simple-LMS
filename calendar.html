@@ -284,13 +284,20 @@
           <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
         </div>
         <div class="modal-body">
-          <div class="mb-3">
-            <label for="editTeamName" class="form-label">Name:</label>
+          <div class="input-group mb-3">
+            <span class="input-group-text" style="min-width:120px;">Name</span>
             <input type="text" class="form-control" id="editTeamName">
           </div>
-          <div class="mb-3">
-            <label for="editTeamColor" class="form-label">Color:</label>
+          <div class="input-group mb-3">
+            <span class="input-group-text" style="min-width:120px;">Color</span>
             <input type="color" class="form-control form-control-color" id="editTeamColor">
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Assign Employees:</label>
+            <input type="text" class="form-control mb-2" id="editTeamEmpSearch" placeholder="Search employees...">
+            <div id="editTeamEmployeesListContainer" style="max-height:220px;overflow-y:auto;border:1px solid #ddd;border-radius:4px;padding:6px;">
+              <div id="editTeamEmployeesList"></div>
+            </div>
           </div>
         </div>
         <div class="modal-footer">
@@ -310,16 +317,12 @@
           <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
         </div>
         <div class="modal-body">
-          <div class="mb-3">
-            <label for="editEmpFname" class="form-label">First Name:</label>
-            <input type="text" class="form-control" id="editEmpFname">
+          <div class="input-group mb-3">
+            <span class="input-group-text" style="min-width:120px;">Name</span>
+            <input type="text" class="form-control" id="editEmpName">
           </div>
-          <div class="mb-3">
-            <label for="editEmpLname" class="form-label">Last Name:</label>
-            <input type="text" class="form-control" id="editEmpLname">
-          </div>
-          <div class="mb-3">
-            <label for="editEmpTeam" class="form-label">Team:</label>
+          <div class="input-group mb-3">
+            <span class="input-group-text" style="min-width:120px;">Team</span>
             <select class="form-select" id="editEmpTeam"></select>
           </div>
         </div>
@@ -340,8 +343,8 @@
           <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
         </div>
         <div class="modal-body">
-          <div class="mb-3">
-            <label for="editLeaveTypeName" class="form-label">Name:</label>
+          <div class="input-group mb-3">
+            <span class="input-group-text" style="min-width:120px;">Name</span>
             <input type="text" class="form-control" id="editLeaveTypeName">
           </div>
         </div>
@@ -662,22 +665,9 @@
             today.setHours(0, 0, 0, 0);
             cellDate.setHours(0, 0, 0, 0);
             if (cellDate.getTime() === today.getTime()) {
-              const logoUrl = 'bhblogo.png';
+        
               const dateNum = cell.querySelector('.fc-daygrid-day-number');
-              if (dateNum) {
-                const logo = document.createElement('img');
-                logo.src = logoUrl;
-                logo.alt = 'BHB Logo';
-                logo.style.width = '22px';
-                logo.style.height = '22px';
-                logo.style.position = 'absolute';
-                logo.style.left = '4px';
-                logo.style.top = '4px';
-                logo.style.zIndex = '2';
-                cell.style.position = 'relative';
-                cell.prepend(logo);
-                dateNum.style.marginLeft = '26px';
-              }
+             
             }
             // Render on-call at top of cell
             if (window._onCall) {
@@ -942,33 +932,19 @@
     async function addEmployee(event) {
       event.preventDefault(); // Prevent form submission
       
-      const name = document.getElementById('employeeName').value;
+      const nameInput = document.getElementById('employeeName').value;
       const teamId = document.getElementById('employeeTeam').value || null;
-      
-  if (!name) return;
-      
-      // Parse first and last name
-      const nameParts = name.trim().split(' ');
-      const fname = nameParts[0];
-      const lname = nameParts.length > 1 ? nameParts.slice(1).join(' ') : '';
-      
+      if (!nameInput) return;
       try {
-        const res = await fetch('/api/employees', {
+        await fetch('/api/employees', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ fname, lname, teamId })
+          body: JSON.stringify({ name: nameInput, teamId })
         });
-        
-        const data = await res.json();
-        if (data.success) {
-          document.getElementById('employeeName').value = '';
-          loadEmployees();
-        } else {
-          // ...existing code...
-        }
+        document.getElementById('employeeName').value = '';
+        loadEmployees();
       } catch (error) {
         console.error('Error adding employee:', error);
-  // ...existing code...
       }
     }
     
@@ -976,14 +952,13 @@
       try {
         const res = await fetch('/api/employees');
         const employees = await res.json();
+        window._employees = employees;
         const teams = window._teams || [];
-        
         const ul = document.getElementById('employeeList');
         if (ul) {
           ul.innerHTML = employees.map((e, i) => {
             const team = teams.find(t => t.id === e.teamId);
-            const displayName = e.name ? e.name : ((e.fname || '') + (e.lname ? ' ' + e.lname : '')).trim();
-            
+            const displayName = e.name || '';
             return `
               <li class="list-group-item">
                 <div>
@@ -1160,7 +1135,7 @@
           }
           
           listDiv.innerHTML = emps.map(e => {
-            const displayName = e.name ? e.name : ((e.fname || '') + (e.lname ? ' ' + e.lname : '')).trim();
+            const displayName = e.name || '';
             const checked = _coveringSelected.includes(displayName) ? 'checked' : '';
             return `<div class="form-check">
               <input class="form-check-input covering-checkbox" type="checkbox" value="${displayName}" id="coverEmp_${displayName}" ${checked}>
@@ -1197,7 +1172,7 @@
       
       const filtered = _modalEmployees
         .filter(e => {
-          const displayName = e.name ? e.name : ((e.fname || '') + (e.lname ? ' ' + e.lname : '')).trim();
+            const displayName = e.name || '';
           return displayName.toLowerCase().includes(q);
         });
       
@@ -1217,8 +1192,7 @@
       _selectedEmp = _modalEmployees[idx];
       document.getElementById('empList').innerHTML = '';
       
-      const displayName = _selectedEmp.name ? _selectedEmp.name : 
-                         ((_selectedEmp.fname || '') + (_selectedEmp.lname ? ' ' + _selectedEmp.lname : '')).trim();
+  const displayName = _selectedEmp.name || '';
       document.getElementById('empSearch').value = displayName;
       
       if (!skipShowStep2) {
@@ -1235,8 +1209,7 @@
         return;
       }
       
-      const empName = _selectedEmp.name ? _selectedEmp.name : 
-                     ((_selectedEmp.fname || '') + (_selectedEmp.lname ? ' ' + _selectedEmp.lname : '')).trim();
+  const empName = _selectedEmp.name || '';
       const leaveType = document.getElementById('leaveTypeSelect').value;
       const start = document.getElementById('leaveStart').value;
       const end = document.getElementById('leaveEnd').value;
@@ -1345,8 +1318,7 @@
         .then(r => r.json())
         .then(emps => {
           const emp = emps[idx];
-          document.getElementById('editEmpFname').value = emp.fname || '';
-          document.getElementById('editEmpLname').value = emp.lname || '';
+          document.getElementById('editEmpName').value = emp.name || '';
           
           // Fill team dropdown
           const sel = document.getElementById('editEmpTeam');
@@ -1371,22 +1343,18 @@
     }
     
     async function saveEditEmp() {
-      const fname = document.getElementById('editEmpFname').value;
-      const lname = document.getElementById('editEmpLname').value;
+      const name = document.getElementById('editEmpName').value;
       const teamId = document.getElementById('editEmpTeam').value || null;
-      
-      if (!fname || !lname) {
-        alert('First and last name required');
+      if (!name) {
+        alert('Name required');
         return;
       }
-      
       try {
         await fetch(`/api/employees/${_editEmpIdx}`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ fname, lname, teamId })
+          body: JSON.stringify({ name, teamId })
         });
-        
         closeEditEmpModal();
         loadEmployees();
       } catch (error) {
@@ -1397,24 +1365,56 @@
     // Edit Team Modal
     function openEditTeamModal(id) {
       _editTeamId = id;
-      fetch('/api/teams')
-        .then(r => r.json())
-        .then(teams => {
-          const team = teams.find(t => t.id === id);
-          if (team) {
-            document.getElementById('editTeamName').value = team.name;
-            document.getElementById('editTeamColor').value = team.color;
-            
-            // Show Bootstrap modal
-            const modal = new bootstrap.Modal(document.getElementById('editTeamModal'));
-            modal.show();
+      Promise.all([
+        fetch('/api/teams').then(r => r.json()),
+        fetch('/api/employees').then(r => r.json())
+      ]).then(([teams, employees]) => {
+        const team = teams.find(t => t.id === id);
+        if (team) {
+          document.getElementById('editTeamName').value = team.name;
+          document.getElementById('editTeamColor').value = team.color;
+          const empListDiv = document.getElementById('editTeamEmployeesList');
+          const empSearch = document.getElementById('editTeamEmpSearch');
+          function renderEmpList(filter = '') {
+            const lower = filter.trim().toLowerCase();
+            empListDiv.innerHTML = employees
+              .map((e, i) => {
+                const checked = e.teamId === id ? 'checked' : '';
+                const teamLabel = e.teamId ? (teams.find(t => t.id === e.teamId)?.name || 'No Team') : 'No Team';
+                const teamColor = e.teamId ? (teams.find(t => t.id === e.teamId)?.color || '#bbb') : '#bbb';
+                if (lower && !e.name.toLowerCase().includes(lower)) return '';
+                return `<div class=\"form-check d-flex align-items-center mb-1\">\n  <input class=\"form-check-input edit-team-emp-checkbox\" type=\"checkbox\" data-emp-idx=\"${i}\" id=\"editTeamEmp_${i}\" ${checked}>\n  <label class=\"form-check-label flex-grow-1\" for=\"editTeamEmp_${i}\">${e.name}</label>\n  <span class=\"badge ms-2\" style=\"background:${teamColor};color:#fff;min-width:60px;\">${teamLabel}</span>\n</div>`;
+              })
+              .filter(Boolean)
+              .join('');
+            empListDiv.querySelectorAll('.edit-team-emp-checkbox').forEach(cb => {
+              cb.onchange = async function() {
+                const empIdx = this.getAttribute('data-emp-idx');
+                const emp = employees[empIdx];
+                const newTeamId = this.checked ? id : null;
+                await fetch(`/api/employees/${empIdx}/team`, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ teamId: newTeamId })
+                });
+                loadEmployees();
+                employees[empIdx].teamId = newTeamId;
+                renderEmpList(empSearch.value);
+              };
+            });
           }
-        })
-        .catch(error => {
-          console.error('Error loading team for editing:', error);
-        });
+          empSearch.oninput = function() {
+            renderEmpList(this.value);
+          };
+          renderEmpList();
+          // Show Bootstrap modal
+          const modal = new bootstrap.Modal(document.getElementById('editTeamModal'));
+          modal.show();
+        }
+      }).catch(error => {
+        console.error('Error loading team or employees for editing:', error);
+      });
     }
-    
     function closeEditTeamModal() {
       const modalEl = document.getElementById('editTeamModal');
       const modal = bootstrap.Modal.getInstance(modalEl);
@@ -1475,14 +1475,12 @@
         alert('Name required');
         return;
       }
-      
       try {
         await fetch(`/api/leave-types/${_editLeaveTypeIdx}`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ name })
         });
-        
         closeEditLeaveTypeModal();
         loadLeaveTypes();
       } catch (error) {
